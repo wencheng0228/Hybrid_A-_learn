@@ -58,6 +58,7 @@ HybridAStar::HybridAStar(double steering_angle,
         << "The segment length must be divisible by the step size. segment_length: " << segment_length_
         << " | step_size: " << move_step_size_;
 
+    // 入参是根据自行车模型算出来的转弯半径
     rs_path_ptr_ = std::make_shared<RSPath>(wheel_base_ / std::tan(steering_radian_));
     tie_breaker_ = 1.0 + 1e-3;
 
@@ -75,6 +76,7 @@ void HybridAStar::Init(double x_lower,
                        double y_upper,
                        double state_grid_resolution,
                        double map_grid_resolution) {
+    // 1.3是后轴到车尾的距离
     SetVehicleShape(4.7, 2.0, 1.3);
 
     map_x_lower_ = x_lower;
@@ -91,10 +93,13 @@ void HybridAStar::Init(double x_lower,
     MAP_GRID_SIZE_Y_ = std::floor((map_y_upper_ - map_y_lower_) / MAP_GRID_RESOLUTION_);
 
     if (map_data_) {
+        // delete[] 用于释放动态分配的数组
+        // delete 和 new 配对使用，delete[] 和 new[] 配对使用
         delete[] map_data_;
         map_data_ = nullptr;
     }
 
+    // 动态数组的元素数量为MAP_GRID_SIZE_X_ * MAP_GRID_SIZE_Y_
     map_data_ = new uint8_t[MAP_GRID_SIZE_X_ * MAP_GRID_SIZE_Y_];
 
     if (state_node_map_) {
@@ -354,6 +359,7 @@ void HybridAStar::GetNeighborNodes(const StateNode::Ptr& curr_node_ptr, std::vec
         const double phi = i * steering_radian_step_size_;
 
         // forward
+        // 每走一步都要做碰撞检测
         for (int j = 1; j <= segment_length_discrete_num_; j++) {
             DynamicModel(move_step_size_, phi, x, y, theta);
             intermediate_state.emplace_back(Vec3d(x, y, theta));
@@ -380,6 +386,7 @@ void HybridAStar::GetNeighborNodes(const StateNode::Ptr& curr_node_ptr, std::vec
         x = curr_node_ptr->state_.x();
         y = curr_node_ptr->state_.y();
         theta = curr_node_ptr->state_.z();
+        // 每走一步都要做碰撞检测
         for (int j = 1; j <= segment_length_discrete_num_; j++) {
             DynamicModel(-move_step_size_, phi, x, y, theta);
             intermediate_state.emplace_back(Vec3d(x, y, theta));
@@ -430,8 +437,10 @@ double HybridAStar::ComputeH(const StateNode::Ptr& current_node_ptr, const State
     //    h = (current_node_ptr->state_.head(2) - terminal_node_ptr->state_.head(2)).norm();
 
     // L1
+    // L1范数，计算曼哈顿距离
     h = (current_node_ptr->state_.head(2) - terminal_node_ptr->state_.head(2)).lpNorm<1>();
 
+    // 先不管RS曲线
     if (h < 3.0 * shot_distance_) {
         h = rs_path_ptr_->Distance(current_node_ptr->state_.x(), current_node_ptr->state_.y(),
                                    current_node_ptr->state_.z(), terminal_node_ptr->state_.x(),
@@ -514,6 +523,7 @@ bool HybridAStar::Search(const Vec3d& start_state, const Vec3d& goal_state) {
         current_node_ptr->node_status_ = StateNode::IN_CLOSESET;
         openset_.erase(openset_.begin());
 
+        // L2范数，欧氏距离
         if ((current_node_ptr->state_.head(2) - goal_node_ptr->state_.head(2)).norm() <= shot_distance_) {
             double rs_length = 0.0;
             if (AnalyticExpansions(current_node_ptr, goal_node_ptr, rs_length)) {
@@ -541,6 +551,7 @@ bool HybridAStar::Search(const Vec3d& start_state, const Vec3d& goal_state) {
         }
 
         Timer timer_get_neighbor;
+        // 如果当前节点周边找不到可达的邻居节点的话，就会跳到while循环开始的位置，弹出其他节点进行检查
         GetNeighborNodes(current_node_ptr, neighbor_nodes_ptr);
         neighbor_time = neighbor_time + timer_get_neighbor.End();
 

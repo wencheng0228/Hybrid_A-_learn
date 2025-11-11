@@ -28,12 +28,14 @@
 #ifndef HYBRID_A_STAR_TYPE_H
 #define HYBRID_A_STAR_TYPE_H
 
-#include <vector>
 #include <Eigen/Core>
+#include <vector>
 
-template<int dim>
-using TypeVectorVecd = typename std::vector<Eigen::Matrix<double, dim, 1>,
-        Eigen::aligned_allocator<Eigen::Matrix<double, dim, 1>>>;
+// 这是一个模板类型别名
+// aligned_allocator 是内存对齐分配器，用于将元素的内存对齐以提高计算速度
+template <int dim>
+using TypeVectorVecd =
+    typename std::vector<Eigen::Matrix<double, dim, 1>, Eigen::aligned_allocator<Eigen::Matrix<double, dim, 1>>>;
 
 typedef TypeVectorVecd<4> VectorVec4d;
 typedef TypeVectorVecd<3> VectorVec3d;
@@ -52,4 +54,4 @@ typedef typename Eigen::Matrix3d Mat3d;
 typedef typename Eigen::MatrixXd MatXd;
 typedef typename Eigen::VectorXd VecXd;
 
-#endif //HYBRID_A_STAR_TYPE_H
+#endif  // HYBRID_A_STAR_TYPE_H
